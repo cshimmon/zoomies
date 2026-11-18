@@ -9,7 +9,7 @@
   html,body{margin:0;height:100%;background:#17151f;overflow:hidden}
   #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
   html,body{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
-  canvas{display:block;width:min(100vw,calc(100dvh*16/9));height:auto;aspect-ratio:16/9;border-radius:6px;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+  canvas{display:block}
   #touch{display:none;position:fixed;inset:0;pointer-events:none;z-index:5}
   .tb{position:absolute;bottom:calc(14px + env(safe-area-inset-bottom));width:min(17vh,88px);height:min(17vh,88px);border-radius:50%;
       background:rgba(255,255,255,.16);border:2px solid rgba(255,255,255,.35);color:#fff;font:800 min(5vh,26px) "Trebuchet MS",system-ui,sans-serif;
@@ -36,7 +36,7 @@
 (() => {
 const cv = document.getElementById('c');
 const ctx = cv.getContext('2d');
-const VW = 1280, VH = 720, WW = 4000, WH = 1060;
+let VW = 1280, VH = 720; const WW = 4000, WH = 1060;
 const GRAV = 2300, RUN = 380, JUMP = 860, DJUMP = 740, GAME_TIME = 120;
 const TAU = Math.PI * 2;
 const FONT = '"Trebuchet MS", system-ui, sans-serif';
@@ -875,23 +875,28 @@ function drawHuman(c,h){
   // neck + head
   rect(c,-7,-162,14,12,SK);
   if(h.type==='mum') sh(()=>{c.beginPath(); c.moveTo(-27,-180); c.ellipse(0,-180,27,27,0,Math.PI,0); c.lineTo(29,-152);
-      for(let x=29;x>-29;x-=14.5) c.quadraticCurveTo(x-7.25,-140,x-14.5,-152); c.closePath();},'#6b4430',2.5);
+      for(let x=29;x>-29;x-=14.5) c.quadraticCurveTo(x-7.25,-140,x-14.5,-152); c.closePath();},'#a8875f',2.5);
   sh(()=>{c.beginPath(); c.ellipse(0,-178,21,24,0,0,TAU);},SK);
   const eyeY=-180;
   if(h.type==='dad'){
-    sh(()=>{c.beginPath(); c.moveTo(-21,-176); c.quadraticCurveTo(-22,-150,0,-153); c.quadraticCurveTo(22,-150,21,-176); c.quadraticCurveTo(12,-160,0,-161); c.quadraticCurveTo(-12,-160,-21,-176); c.closePath();},'#a07a4c',2);
-    sh(()=>{c.beginPath(); c.ellipse(0,-196,21,11,0,Math.PI,TAU); c.lineTo(21,-193); c.lineTo(-21,-193); c.closePath();},'#b88d55',2);
-    sh(()=>{c.beginPath(); c.moveTo(-20,-196); c.quadraticCurveTo(-14,-212,4,-210); c.quadraticCurveTo(20,-209,22,-196); c.quadraticCurveTo(10,-203,-2,-200); c.quadraticCurveTo(-12,-199,-20,-196); c.closePath();},'#b88d55',2);
+    c.save(); c.beginPath(); c.ellipse(0,-178,20,23,0,0,TAU); c.clip();
+    c.fillStyle='rgba(150,110,65,.45)'; c.beginPath(); c.moveTo(-18,-170); c.quadraticCurveTo(-16,-150,0,-152); c.quadraticCurveTo(16,-150,18,-170); c.quadraticCurveTo(10,-164,0,-165); c.quadraticCurveTo(-10,-164,-18,-170); c.fill();
+    c.fillStyle='rgba(150,110,65,.4)'; c.beginPath(); c.ellipse(0,-165,7,2.4,0,0,TAU); c.fill();
+    for(let i=0;i<40;i++){ const a=i*2.399, r=(i%10)*1.7; ell(c,Math.cos(a)*r*1.8,-158+Math.sin(a)*r*0.6,0.6,0.6,'rgba(110,80,45,.6)'); }
+    c.restore();
+    sh(()=>{c.beginPath(); c.moveTo(-21,-182); c.lineTo(-21,-194);
+      for(const [x,y] of [[-18,-206],[-14,-201],[-10,-212],[-6,-204],[-1,-214],[3,-205],[8,-213],[11,-204],[16,-209],[18,-200],[21,-196]]) c.lineTo(x,y);
+      c.lineTo(21,-182); c.quadraticCurveTo(14,-194,0,-195); c.quadraticCurveTo(-14,-194,-21,-182); c.closePath();},'#b88d55',2);
     ell(c,-7,eyeY,3.2,3.6,'#fff'); ell(c,7,eyeY,3.2,3.6,'#fff'); ell(c,-7,eyeY,1.8,1.8,'#3b6fa8'); ell(c,7,eyeY,1.8,1.8,'#3b6fa8');
     line(c,-12,eyeY-8,-3,eyeY-10,'#8a6a40',2.5); line(c,12,eyeY-8,3,eyeY-10,'#8a6a40',2.5);
     ell(c,0,-171,3,4,'#e3a98a');
     ell(c,0,-160,4,3,'#c9776a'); ell(c,-9,-163,4,3,'#f4cbb0'); ell(c,9,-163,4,3,'#f4cbb0');
   } else if(h.type==='mum'){
     sh(()=>{c.beginPath(); c.moveTo(-21,-184); c.quadraticCurveTo(-19,-207,4,-204); c.quadraticCurveTo(23,-201,22,-182);
-      c.quadraticCurveTo(10,-197,-3,-193); c.quadraticCurveTo(-14,-191,-21,-184); c.closePath();},'#6b4430',2);
-    sh(()=>{c.beginPath(); c.moveTo(-21,-187); c.quadraticCurveTo(-27,-166,-21,-151); c.lineTo(-15,-153); c.quadraticCurveTo(-19,-168,-15,-185); c.closePath();},'#6b4430',2);
-    sh(()=>{c.beginPath(); c.moveTo(21,-187); c.quadraticCurveTo(27,-166,21,-151); c.lineTo(15,-153); c.quadraticCurveTo(19,-168,15,-185); c.closePath();},'#6b4430',2);
-    line(c,-8,-198,6,-201,'#8a5a40',2);
+      c.quadraticCurveTo(10,-197,-3,-193); c.quadraticCurveTo(-14,-191,-21,-184); c.closePath();},'#a8875f',2);
+    sh(()=>{c.beginPath(); c.moveTo(-21,-187); c.quadraticCurveTo(-27,-166,-21,-151); c.lineTo(-15,-153); c.quadraticCurveTo(-19,-168,-15,-185); c.closePath();},'#a8875f',2);
+    sh(()=>{c.beginPath(); c.moveTo(21,-187); c.quadraticCurveTo(27,-166,21,-151); c.lineTo(15,-153); c.quadraticCurveTo(19,-168,15,-185); c.closePath();},'#a8875f',2);
+    line(c,-8,-198,6,-201,'#c9ab80',2); line(c,-24,-170,-22,-156,'#c9ab80',1.5); line(c,24,-170,22,-156,'#c9ab80',1.5);
     ell(c,-7,eyeY,1.8,1.8,'#3b6fa8'); ell(c,7,eyeY,1.8,1.8,'#3b6fa8');
     c.strokeStyle='#7a1f2b'; c.lineWidth=3.2; c.beginPath(); c.roundRect(-16,eyeY-7,13,12,4); c.roundRect(3,eyeY-7,13,12,4); c.stroke(); line(c,-3,eyeY-2,3,eyeY-2,'#7a1f2b',2.5);
     ell(c,0,-169,2.5,3,'#e3a98a');
@@ -933,6 +938,7 @@ function txt(s,x,y,size,col,align='left',weight='800'){
 }
 
 function render(){
+  const RS=cv.height/VH; ctx.setTransform(RS,0,0,RS,0,0);
   const sx=Math.round(clamp(cam.x,0,WW-VW)), sy=Math.round(clamp(cam.y,0,WH-VH));
   ctx.fillStyle='#17151f'; ctx.fillRect(0,0,VW,VH);
   ctx.save(); ctx.translate(shake.x,shake.y);
@@ -1059,6 +1065,17 @@ addEventListener('blur',()=>{ for(const k in keys) keys[k]=false; });
 
 
 const IS_TOUCH = matchMedia('(pointer:coarse)').matches;
+function resize(){
+  const w=window.innerWidth, h=window.innerHeight, dpr=Math.min(2,window.devicePixelRatio||1);
+  VH = IS_TOUCH ? 600 : 720;
+  const aspect=Math.min(2.4,Math.max(1.25,w/h));
+  VW = VH*aspect;
+  let cw=w, ch=w/aspect; if(ch>h){ ch=h; cw=h*aspect; }
+  cv.style.width=cw+'px'; cv.style.height=ch+'px';
+  cv.width=Math.round(cw*dpr); cv.height=Math.round(ch*dpr);
+}
+window.addEventListener('resize',resize); window.addEventListener('orientationchange',()=>setTimeout(resize,200));
+resize();
 document.querySelectorAll('.tb').forEach(b=>{
   const k=b.dataset.k;
   const down=e=>{ e.preventDefault(); initAudio(); if(!keys[k]) pressed[k]=true; keys[k]=true; b.classList.add('on'); try{b.setPointerCapture(e.pointerId);}catch(_){} };
