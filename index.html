@@ -333,7 +333,6 @@ function drawHouse(c){
   rr(c,2920,790,100,210,6,'#1e1e22'); line(c,2922,860,3018,860,'#333',2); rect(c,2930,800,4,40,'#555');
   for(let i=0;i<14;i++) rect(c,2940+rnd()*70,805+rnd()*150,8+rnd()*6,6+rnd()*6,['#e74c3c','#f39c12','#3498db','#2ecc71','#9b59b6','#f1c40f'][i%6]);
   line(c,2905,700,2905,800,'#ddd',2); for(let i=0;i<3;i++) line(c,2895+i*8,760,2895+i*8,800,'#222',3);
-  rect(c,3040,935,55,65,'#222'); rect(c,3038,930,59,10,'#e67e22');
   rr(c,3105,920,55,80,8,'#1a1a1a'); ell(c,3132,922,27,8,'#111');
   rr(c,3175,950,60,50,8,'#c9a66b'); for(let i=3180;i<3235;i+=8) line(c,i,954,i,996,'#a9874f',2); ell(c,3200,948,16,7,'#555');
   rect(c,3250,925,140,75,'#c9cbcc'); rect(c,3262,932,72,62,'#1a1a1a'); rect(c,3266,940,64,4,'#666'); rect(c,3292,942,14,40,'#e8a07a');
@@ -579,7 +578,8 @@ function reset(){
   timeLeft=GAME_TIME; gotCount=0; parts=[]; pops=[]; banner=null; shakeAmt=0; playT=0;
   balls.forEach(b=>b.got=false);
   humans=[]; arriveT=0;
-  cat={spot:catSpots[0],x:catSpots[0].x,y:catSpots[0].y,leap:null};
+  cat={w:0,state:'sit',t:0};
+  bin.tipped=false; bin.kib=[]; bin.t=0; const bp=plats.find(p=>p.name==='Food bin'); bp.y=935; bp.w=55; bp.x=3040;
   drawHouse(hctx);
   cam.x=clamp(P.x-VW/2,0,WW-VW); cam.y=clamp(P.y-VH*0.55,0,WH-VH);
 }
@@ -622,11 +622,7 @@ function onLand(s,impact){
       sfx.splash(); for(let i=0;i<16;i++) parts.push({x:P.x+P.w/2,y:P.y+P.h,vx:(Math.random()-.5)*400,vy:-200-Math.random()*300,life:.7,max:.7,r:3,col:'rgba(110,190,255,',g:1});
     } else { shakeAmt=6; addScore(50); pop('THUD +50','#ddd'); sfx.thud(); }
   }
-  if(!cat.leap && s.name===cat.spot.name && Math.abs(P.x+P.w/2-cat.x)<60){
-    addScore(500); setBanner('CAT EVICTED! +500','#ff9ad5'); sfx.hiss(); setTimeout(sfx.woof,250);
-    const opts=catSpots.filter(c=>c!==cat.spot), to=opts[(Math.random()*opts.length)|0];
-    cat.leap={fx:cat.x,fy:cat.y,tx:to.x,ty:to.y,t:0,to};
-  }
+  if(s.name==='Food bin' && !bin.tipped) tipBin();
 }
 
 function physics(dt){
@@ -728,13 +724,7 @@ function update(dt){
     b.got=true; gotCount++; addScore(250); pop('Ball! +250','#d4e157',22); sfx.ball();
     if(balls.every(b=>b.got)){ addScore(2000); setBanner('ALL THE BALLS! GOOD BOY LUDO +2000','#d4e157'); sfx.woof(); balls.forEach(b=>b.got=false); }
   }
-  // cat leap
-  if(cat.leap){
-    const l=cat.leap; l.t+=dt/0.9;
-    const k=Math.min(1,l.t);
-    cat.x=l.fx+(l.tx-l.fx)*k; cat.y=l.fy+(l.ty-l.fy)*k-Math.sin(k*Math.PI)*180;
-    if(k>=1){ cat.spot=l.to; cat.x=l.tx; cat.y=l.ty; cat.leap=null; }
-  }
+  updateCat(dt); updateBin(dt);
   // particles + popups
   for(const p of parts){ p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=(p.g?1400:200)*dt; p.vx*=0.96; p.life-=dt; }
   parts=parts.filter(p=>p.life>0);
@@ -747,6 +737,82 @@ function update(dt){
   const k=Math.min(1,dt*5);
   cam.x+=(clamp(P.x+P.w/2-VW/2+P.facing*110,0,WW-VW)-cam.x)*k;
   cam.y+=(clamp(P.y-VH*(IS_TOUCH?0.45:0.55),0,WH-VH)-cam.y)*k;
+}
+
+
+/* ---------------- Next door's cat (outside the windows) ---------------- */
+const catWindows=[[80,640,160,180],[1080,640,150,160],[1490,610,130,170],[2540,640,150,150],[60,170,130,180],[300,170,130,180],[3010,150,120,170]];
+function catPos(){ const [x,y,w,h]=catWindows[cat.w]; return [x+w*0.62, y+h-16]; }
+function updateCat(dt){
+  if(cat.state==='sit'){
+    const [cx,cy]=catPos();
+    if(Math.hypot(P.x+P.w/2-cx,P.y+P.h/2-cy)<200){
+      cat.state='flee'; cat.t=0; addScore(500); setBanner("NEXT DOOR'S CAT SCARED OFF! +500",'#ff9ad5');
+      sfx.woof(); setTimeout(sfx.hiss,180); pop('WOOF!','#fff',26);
+    }
+  } else if(cat.state==='flee'){ cat.t+=dt; if(cat.t>0.8){ cat.state='gone'; cat.t=0; } }
+  else { cat.t+=dt;
+    if(cat.t>12){ const opts=catWindows.map((_,i)=>i).filter(i=>{ if(i===cat.w) return false; const [x,y,w,h]=catWindows[i]; return Math.hypot(P.x-(x+w/2),P.y-(y+h))>500; });
+      if(opts.length){ cat.w=opts[(Math.random()*opts.length)|0]; cat.state='sit'; } } }
+}
+function drawWindowCat(c,t){
+  if(cat.state==='gone') return;
+  const [x,y,w,h]=catWindows[cat.w], [cx,cy]=catPos();
+  c.save(); c.beginPath(); c.rect(x,y,w,h); c.clip();
+  const grey='#7d7d86', dk='#55555e', OL='#1a1a1e';
+  if(cat.state==='sit'){
+    c.save(); c.translate(cx,cy);
+    c.strokeStyle=grey; c.lineWidth=5; c.lineCap='round'; c.beginPath(); c.moveTo(8,-4); c.quadraticCurveTo(22,-6+Math.sin(t*2)*3,18,-20+Math.sin(t*2)*4); c.stroke();
+    ell(c,0,-14,11,15,grey); ell(c,-2,-10,5,9,'#a8a8b0');
+    ell(c,0,-34,10,9,grey);
+    c.fillStyle=grey; c.beginPath(); c.moveTo(-9,-38); c.lineTo(-7,-50); c.lineTo(-1,-41); c.fill(); c.beginPath(); c.moveTo(9,-38); c.lineTo(7,-50); c.lineTo(1,-41); c.fill();
+    for(const s of [-1,1]) for(let i=0;i<2;i++) line(c,s*(4+i*2),-24-i*4,s*(6+i*2),-18-i*4,dk,1.5);
+    ell(c,-4,-35,2.6,2.6,'#e6d45a'); ell(c,4,-35,2.6,2.6,'#e6d45a'); rect(c,-4.5,-37,1,4,OL); rect(c,3.5,-37,1,4,OL);
+    ell(c,0,-31,1.6,1.2,'#e09aa8'); line(c,-9,-30,-15,-31,'#ddd',1); line(c,9,-30,15,-31,'#ddd',1);
+    c.restore();
+  } else {
+    const k=cat.t/0.8; c.save(); c.translate(cx+k*120,cy-Math.sin(k*Math.PI)*50+k*40);
+    ell(c,0,-14,16,8,grey); ell(c,14,-20,8,7,grey);
+    c.strokeStyle=grey; c.lineWidth=9; c.lineCap='round'; c.beginPath(); c.moveTo(-14,-14); c.lineTo(-26,-30); c.stroke();
+    c.fillStyle=grey; c.beginPath(); c.moveTo(10,-24); c.lineTo(9,-34); c.lineTo(15,-26); c.fill(); c.beginPath(); c.moveTo(16,-25); c.lineTo(20,-34); c.lineTo(21,-24); c.fill();
+    ell(c,17,-21,2.4,2.4,'#fff'); ell(c,17,-21,1,1,OL);
+    c.restore();
+    c.fillStyle='#fff'; c.font='800 18px '+FONT; c.fillText('!',cx-4,cy-60);
+  }
+  c.restore();
+}
+
+/* ---------------- Ludo's food bin ---------------- */
+const bin={tipped:false,kib:[],t:0};
+function tipBin(){
+  bin.tipped=true; bin.t=0;
+  const bp=plats.find(p=>p.name==='Food bin'); bp.y=972; bp.w=70; bp.x=3030;
+  for(let i=0;i<34;i++) bin.kib.push({x:3100+Math.random()*12,y:985,vx:40+Math.random()*260,vy:-60-Math.random()*160,eaten:false,s:3.8+Math.random()*1.8});
+  addScore(300); setBanner('FOOD BIN RAID! +300','#f7c873'); shakeAmt=8;
+  tone(180,60,0.25,'square',0.06); tone(900,300,0.3,'triangle',0.05,0.05); setTimeout(sfx.woof,350);
+}
+function updateBin(dt){
+  if(!bin.tipped) return;
+  bin.t+=dt;
+  for(const k of bin.kib){ if(k.vy!==0||k.vx!==0){ k.x+=k.vx*dt; k.y+=k.vy*dt; k.vy+=1200*dt; k.vx*=0.97; if(k.y>=994){ k.y=994; k.vy=0; k.vx=Math.abs(k.vx)<8?0:k.vx*0.5; } } }
+  if(P.onGround && P.y+P.h>990){
+    const mx=P.x+P.w/2+P.facing*40;
+    let n=0;
+    for(const k of bin.kib) if(!k.eaten && k.vy===0 && Math.abs(k.x-mx)<34){ k.eaten=true; n++; }
+    if(n){ addScore(10*n); pop('nom +'+(10*n),'#f7c873',16); tone(300,200,0.06,'square',0.04); P.squash=0.06;
+      if(bin.kib.every(k=>k.eaten)){ addScore(250); setBanner('CLEARED THE LOT! +250','#f7c873'); } }
+  }
+}
+function drawBin(c){
+  if(!bin.tipped){
+    rect(c,3040,935,55,65,'#222'); rect(c,3038,930,59,10,'#e67e22');
+  } else {
+    c.save(); c.translate(3030,1000);
+    rr(c,0,-28,70,28,4,'#222'); ell(c,70,-14,5,14,'#111'); ell(c,72,-10,5,8,'#8a5a2b');
+    c.restore();
+    c.save(); c.translate(3125,996); c.rotate(-0.25); rect(c,-30,-4,59,8,'#e67e22'); c.restore();
+    for(const k of bin.kib) if(!k.eaten){ ell(c,k.x,k.y,k.s+1,k.s*0.8+1,'#3b2412'); ell(c,k.x,k.y,k.s,k.s*0.8,'#a8692f'); }
+  }
 }
 
 /* ---------------- The humans ---------------- */
@@ -873,7 +939,7 @@ function render(){
   ctx.drawImage(house,sx,sy,VW,VH,0,0,VW,VH);
   ctx.translate(-sx,-sy);
   for(const b of balls) if(!b.got) drawBall(ctx,b,T);
-  drawCat(ctx,cat.x,cat.y,T,!!cat.leap);
+  drawWindowCat(ctx,T); drawBin(ctx);
   for(const p of parts){ ctx.fillStyle=p.col+Math.max(0,p.life/p.max).toFixed(2)+')';
     if(p.heart){ ctx.font='bold 22px '+FONT; ctx.textAlign='center'; ctx.fillText('\u2665',p.x,p.y); ctx.textAlign='left'; }
     else { ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,TAU); ctx.fill(); } }
@@ -926,7 +992,7 @@ function titleScreen(){
     "The humans have popped to Tesco. You have two minutes, Ludo.",
     'Parkour round the whole house without touching the floor.',
     'Each new bit of furniture in a run scores more. Touching the floor resets the combo.',
-    'Find the tennis balls, belly flop onto soft things, and evict next door\'s cat.',
+    'Find the tennis balls, raid the food bin, and scare off next door\'s cat at the windows.',
     (IS_TOUCH?'Hold Down':'Hold S or Down')+' to sneak under the stairs. Drop through the landing into the hall.',
   ];
   lines.forEach((l,i)=>txt(l,VW/2,y0+170+i*30,17,'#e8e0d0','center','600'));
